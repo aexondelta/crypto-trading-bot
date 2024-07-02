@@ -33,4 +33,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Execute trading bot
-        run: python main.py  # Replace with the actual command to run your trading bot
+        run: python -m main.py  # Replace with the actual command to run your trading bot
