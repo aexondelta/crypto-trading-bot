@@ -1,65 +1,79 @@
 import time
-import requests
-import hmac
-import hashlib
-import json
+import pandas as pd
+from binance.client import Client
 
-# Your Binance API credentials for the testnet
-API_KEY = 'your_api_key'
-API_SECRET = 'your_secret_key'
-BASE_URL = 'https://testnet.binance.vision/api'
+# Testnet API credentials
+API_KEY = 'API_KEY'
+API_SECRET = 'API_SECRET'
 
-def get_historical_data(symbol, interval, start_time, end_time):
-    url = f"{BASE_URL}/v3/klines"
-    params = {
-        'symbol': symbol,
-        'interval': interval,
-        'startTime': start_time,
-        'endTime': end_time
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
+# Initialize the client for Binance Futures Testnet
+client = Client(API_KEY, API_SECRET, testnet=True)
+client.API_URL = 'https://testnet.binancefuture.com/fapi'
+
+# List of cryptocurrencies to trade
+symbols = [
+    'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
+    'DOTUSDT', 'UNIUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT'
+]
+
+def get_historical_data(symbol, interval, lookback):
+    # Fetch historical data
+    klines = client.futures_klines(symbol=symbol, interval=interval, limit=lookback)
+    data = pd.DataFrame(klines, columns=[
+        'timestamp', 'open', 'high', 'low', 'close', 'volume', 
+        'close_time', 'quote_asset_volume', 'number_of_trades', 
+        'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
+    ])
+    data['close'] = data['close'].astype(float)
     return data
 
-def create_order(symbol, side, type, quantity):
-    url = f"{BASE_URL}/v3/order"
-    timestamp = int(time.time() * 1000)
-    params = {
-        'symbol': symbol,
-        'side': side,
-        'type': type,
-        'quantity': quantity,
-        'timestamp': timestamp
-    }
-    query_string = '&'.join([f"{key}={value}" for key, value in params.items()])
-    signature = hmac.new(API_SECRET.encode(), query_string.encode(), hashlib.sha256).hexdigest()
-    params['signature'] = signature
-    headers = {
-        'X-MBX-APIKEY': API_KEY
-    }
-    response = requests.post(url, headers=headers, params=params)
-    return response.json()
+def calculate_ema(data, span):
+    # Calculate Exponential Moving Average (EMA)
+    return data['close'].ewm(span=span, adjust=False).mean()
 
 def run_trading_logic():
+    # Trading logic for each symbol
     print("Running trading logic...")
-    symbol = 'BTCUSDT'
-    interval = '1d'
-    start_time = 1622505600000  # Example start time
-    end_time = 1625097600000  # Example end time
-    try:
-        historical_data = get_historical_data(symbol, interval, start_time, end_time)
-        closes = [float(candle[4]) for candle in historical_data]
-        short_avg = sum(closes[-5:]) / 5
-        long_avg = sum(closes[-20:]) / 20
-        print(f"Short Avg: {short_avg}, Long Avg: {long_avg}")
-        if short_avg > long_avg:
-            print("Buying BTC")
-            create_order(symbol, 'BUY', 'MARKET', 0.001)
-        elif short_avg < long_avg:
-            print("Selling BTC")
-            create_order(symbol, 'SELL', 'MARKET', 0.001)
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    interval = '1h'
+    lookback = 50
+    short_ema_span = 12
+    long_ema_span = 26
+
+    for symbol in symbols:
+        try:
+            # Fetch historical data
+            historical_data = get_historical_data(symbol, interval, lookback)
+            
+            # Calculate short-term and long-term EMAs
+            historical_data['short_ema'] = calculate_ema(historical_data, short_ema_span)
+            historical_data['long_ema'] = calculate_ema(historical_data, long_ema_span)
+            
+            # Get the latest EMA values
+            short_ema = historical_data['short_ema'].iloc[-1]
+            long_ema = historical_data['long_ema'].iloc[-1]
+            
+            # Print EMAs for debugging
+            print(f"{symbol} - Short EMA: {short_ema}, Long EMA: {long_ema}")
+            
+            # Example buy/sell logic based on EMA crossover
+            if short_ema > long_ema:
+                print(f"Buying {symbol}")
+                client.futures_create_order(
+                    symbol=symbol,
+                    side='BUY',
+                    type='MARKET',
+                    quantity=0.001  # Adjust quantity as needed
+                )
+            elif short_ema < long_ema:
+                print(f"Selling {symbol}")
+                client.futures_create_order(
+                    symbol=symbol,
+                    side='SELL',
+                    type='MARKET',
+                    quantity=0.001  # Adjust quantity as needed
+                )
+        except Exception as e:
+            print(f"An error occurred for {symbol}: {e}")
 
 while True:
     try:
@@ -67,3 +81,4 @@ while True:
     except Exception as e:
         print(f"Error in main loop: {e}")
     time.sleep(3600)  # Sleep for 1 hour
+
