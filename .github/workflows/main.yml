@@ -27,9 +27,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+  debug:
+    needs: setup  # Ensure this step runs after the setup job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: List files in repository
+        run: ls -R  # List all files and directories recursively
+
+      - name: Print current working directory
+        run: pwd  # Print current working directory
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Replace with your Python version
+
+      - name: Run Python script
+        run: python path/to/main.py  # Adjust the path as per your repository structure
+
   run-trading-bot:
-    needs: setup
+    needs: debug  # Ensure this step runs after the debug job
     runs-on: ubuntu-latest
     steps:
       - name: Execute trading bot
-        run: python main.py
+        run: python main.py  # Replace with the actual command to run your trading bot
