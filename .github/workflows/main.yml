@@ -43,10 +43,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'  # Replace with your Python version
+          python-version: '3.12.4'  # Replace with your Python version
 
       - name: Run Python script
-        run: python path/to/main.py  # Adjust the path as per your repository structure
+        run: python main.py  # Adjust the path as per your repository structure
 
   run-trading-bot:
     needs: debug  # Ensure this step runs after the debug job
