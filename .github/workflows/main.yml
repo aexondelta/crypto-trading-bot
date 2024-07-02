@@ -19,12 +19,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12.4'
+          python-version: '3.12'
           node-version: '20'
 
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
+          python3 -m pip3 install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install pandas  # Install pandas explicitly
 
@@ -33,4 +33,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Execute trading bot
-        run: python -m crypto-trading-bot # Replace with the actual command to run your trading bot
+        run: python main.py # Replace with the actual command to run your trading bot
